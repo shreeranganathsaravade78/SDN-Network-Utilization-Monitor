@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Network Utilization Monitor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;600;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:        #050d1a;
+      --panel:     #0a1628;
+      --border:    #0f2a50;
+      --accent:    #00d4ff;
+      --accent2:   #00ff9f;
+      --warn:      #ffb700;
+      --danger:    #ff3d6b;
+      --text:      #c8e0ff;
+      --muted:     #3a5a80;
+      --glow:      0 0 18px rgba(0,212,255,0.35);
+      --glow2:     0 0 18px rgba(0,255,159,0.35);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Exo 2', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 30px 20px 60px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 36px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .logo-area h1 {
+      font-family: 'Exo 2', sans-serif;
+      font-weight: 800;
+      font-size: 1.9rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .logo-area p {
+      font-size: 0.75rem;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-top: 3px;
+    }
+
+    .header-meta {
+      text-align: right;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .live-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      background: var(--accent2);
+      border-radius: 50%;
+      margin-right: 6px;
+      animation: pulse 1.5s infinite;
+      box-shadow: var(--glow2);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .kpi {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s;
+    }
+
+    .kpi::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+
+    .kpi:hover { border-color: var(--accent); box-shadow: var(--glow); }
+
+    .kpi-label {
+      font-size: 0.68rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .kpi-value {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.7rem;
+      color: var(--accent);
+      text-shadow: var(--glow);
+    }
+
+    .kpi-unit {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-left: 4px;
+    }
+
+    .switches-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+      gap: 24px;
+    }
+
+    .switch-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .switch-panel:hover {
+      border-color: var(--accent);
+      box-shadow: var(--glow);
+    }
+
+    .switch-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 24px;
+      background: rgba(0,212,255,0.04);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .switch-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .switch-name {
+      font-weight: 600;
+      font-size: 1rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .switch-status {
+      margin-left: auto;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--accent2);
+      background: rgba(0,255,159,0.08);
+      border: 1px solid rgba(0,255,159,0.2);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .port-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .port-table thead th {
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 10px 24px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .port-table thead th:not(:first-child) { text-align: right; }
+
+    .port-row {
+      border-bottom: 1px solid rgba(15,42,80,0.6);
+      transition: background 0.2s;
+    }
+
+    .port-row:hover { background: rgba(0,212,255,0.04); }
+    .port-row:last-child { border-bottom: none; }
+
+    .port-row td {
+      padding: 12px 24px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.82rem;
+      vertical-align: middle;
+    }
+
+    .port-row td:not(:first-child) { text-align: right; }
+
+    .port-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+    }
+
+    .port-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent2);
+      box-shadow: 0 0 6px var(--accent2);
+      flex-shrink: 0;
+    }
+
+    .port-dot.sys { background: var(--muted); box-shadow: none; }
+
+    .val-rx { color: var(--accent); }
+    .val-tx { color: var(--accent2); }
+
+    .spark-track {
+      width: 80px; height: 6px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-left: auto;
+    }
+
+    .spark-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--accent);
+      transition: width 0.8s ease;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 28px;
+      padding: 14px 20px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--muted);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .status-bar .hi { color: var(--accent); }
+
+    .state-msg {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.9rem;
+      letter-spacing: 0.1em;
+      grid-column: 1 / -1;
+    }
+
+    .state-msg .big { font-size: 2.5rem; margin-bottom: 12px; display: block; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="logo-area">
+      <h1>⬡ Network Utilization Monitor</h1>
+      <p>SDN · OpenFlow 1.3 · Ryu Controller · Mininet</p>
+    </div>
+    <div class="header-meta">
+      <div><span class="live-dot"></span> LIVE</div>
+      <div id="clock">--:--:--</div>
+      <div>Poll <span id="poll-count" style="color:var(--accent)">#0</span></div>
+    </div>
+  </header>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Total RX</div>
+      <div class="kpi-value" id="kpi-rx">0.000 <span class="kpi-unit">Kbps</span></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Total TX</div>
+      <div class="kpi-value" id="kpi-tx">0.000 <span class="kpi-unit">Kbps</span></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Active Ports</div>
+      <div class="kpi-value" id="kpi-ports">0 <span class="kpi-unit">ports</span></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Switches</div>
+      <div class="kpi-value" id="kpi-switches">0 <span class="kpi-unit">sw</span></div>
+    </div>
+  </div>
+
+  <div class="switches-grid" id="switches-grid">
+    <div class="state-msg"><span class="big">📡</span>Connecting to Ryu controller...</div>
+  </div>
+
+  <div class="status-bar">
+    <span>API: <span class="hi">http://127.0.0.1:8080/stats/bandwidth</span></span>
+
+
+
+
+    // Time Intervel
+    <span>Refresh: <span class="hi">5s</span></span>
+
+
+
+
+
+    <span>Unit: <span class="hi">Kbps</span></span>
+    <span id="last-update">Last update: --</span>
+  </div>
+
+</div>
+
+<script>
+  const API = 'http://127.0.0.1:8080/stats/bandwidth';
+  let pollCount = 0;
+
+  // Live clock
+  setInterval(() => {
+    document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+  }, 1000);
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+
+  // Convert Mbps to Kbps
+  function toKbps(mbps) {
+    return (mbps * 1000).toFixed(3);
+  }
+
+  // Bar width capped at 100%
+  function barWidth(kbps) {
+    return Math.min((parseFloat(kbps) / 1000) * 100, 100).toFixed(1) + '%';
+  }
+
+  async function fetchAndRender() {
+    pollCount++;
+    document.getElementById('poll-count').textContent = '#' + pollCount;
+
+    let data;
+    try {
+      const res = await fetch(API);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      data = await res.json();
+    } catch (e) {
+      document.getElementById('switches-grid').innerHTML =
+        `<div class="state-msg">
+          <span class="big">⚠️</span>
+          Cannot reach Ryu API<br>
+          <small style="color:#ff3d6b">${e.message}</small><br><br>
+          <small>Make sure Ryu is running:<br>ryu-manager monitor_app.py ryu.app.simple_switch_13 --observe-links</small>
+        </div>`;
+      return;
+    }
+
+    // Group ports by switch
+    const switches = {};
+    for (const [key, val] of Object.entries(data)) {
+      const sw = 'sw' + val.switch;
+      if (!switches[sw]) switches[sw] = [];
+      switches[sw].push({ key, ...val });
+    }
+
+    // Update KPI cards
+    let totalRx = 0, totalTx = 0, activePorts = 0;
+    for (const val of Object.values(data)) {
+      const rx = val.rx_mbps * 1000;
+      const tx = val.tx_mbps * 1000;
+      totalRx += rx;
+      totalTx += tx;
+      if (rx > 0 || tx > 0) activePorts++;
+    }
+
+    document.getElementById('kpi-rx').innerHTML =
+      totalRx.toFixed(3) + ' <span class="kpi-unit">Kbps</span>';
+    document.getElementById('kpi-tx').innerHTML =
+      totalTx.toFixed(3) + ' <span class="kpi-unit">Kbps</span>';
+    document.getElementById('kpi-ports').innerHTML =
+      activePorts + ' <span class="kpi-unit">ports</span>';
+    document.getElementById('kpi-switches').innerHTML =
+      Object.keys(switches).length + ' <span class="kpi-unit">sw</span>';
+
+    // Build switch panels
+    const grid = document.getElementById('switches-grid');
+
+    if (Object.keys(switches).length === 0) {
+      grid.innerHTML =
+        '<div class="state-msg"><span class="big">📭</span>No port data yet — run traffic in Mininet<br><small>Try: mininet> iperf h1 h3</small></div>';
+      return;
+    }
+
+    grid.innerHTML = Object.entries(switches).sort().map(([swName, ports]) => {
+      const rows = ports
+        .sort((a, b) => a.port - b.port)
+        .map(p => {
+          const rxK = toKbps(p.rx_mbps);
+          const txK = toKbps(p.tx_mbps);
+          const isSys = p.port === 4294967294;
+          const portLabel = isSys ? 'LOCAL (sys)' : 'Port ' + p.port;
+          const dotClass = isSys ? 'port-dot sys' : 'port-dot';
+          return `
+            <tr class="port-row">
+              <td><div class="port-name"><div class="${dotClass}"></div>${portLabel}</div></td>
+              <td class="val-rx">${rxK}</td>
+              <td class="val-tx">${txK}</td>
+              <td>
+                <div class="spark-track">
+                  <div class="spark-fill" style="width:${barWidth(rxK)}"></div>
+                </div>
+              </td>
+            </tr>`;
+        }).join('');
+
+      return `
+        <div class="switch-panel">
+          <div class="switch-header">
+            <div class="switch-icon">🔀</div>
+            <div class="switch-name">${swName.replace('sw', 'Switch ')}</div>
+            <div class="switch-status">● ONLINE</div>
+          </div>
+          <table class="port-table">
+            <thead>
+              <tr>
+                <th>Port</th>
+                <th>RX (Kbps)</th>
+                <th>TX (Kbps)</th>
+                <th style="text-align:right">RX Load</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    }).join('');
+
+    document.getElementById('last-update').textContent =
+      'Last update: ' + new Date().toLocaleTimeString();
+  }
+
+
+
+
+
+  
+  // First fetch + repeat every 5s
+  fetchAndRender();
+  setInterval(fetchAndRender, 5000);
+</script>
+</body>
+</html>
